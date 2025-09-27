@@ -8,12 +8,12 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRe
 import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.crypto.spec.SecretKeySpec;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Collections;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -76,14 +76,14 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
             // Build JWT
             Instant now = Instant.now();
-            SecretKeySpec secretKeySpec = new SecretKeySpec(JWT_SECRET.getBytes(), SignatureAlgorithm.HS256.getJcaName());
+            byte[] secretKeyBytes = Base64.getDecoder().decode(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
 
             String jwt = Jwts.builder()
                     .setSubject(user.username())
                     .setIssuedAt(Date.from(now))
                     .setExpiration(Date.from(now.plusSeconds(3600))) // Expires in 1 hour
                     .claim("cpf", cpf)
-                    .signWith(secretKeySpec)
+                    .signWith(Keys.hmacShaKeyFor(secretKeyBytes))
                     .compact();
 
             return ApiGatewayResponse.build(200, Map.of("token", jwt));
