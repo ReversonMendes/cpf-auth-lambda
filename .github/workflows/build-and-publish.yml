@@ -29,13 +29,10 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build with Maven
-        run: mvn -B package --file pom.xml -Drevision=${{ steps.get_version.outputs.VERSION }} -DskipTests
-
-      - name: Create ZIP file
         run: |
-          cd target
-          zip cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.jar
-          cd ..
+          mvn -B package --file pom.xml -Drevision=${{ steps.get_version.outputs.VERSION }} -DskipTests
+          # Rename the final fat jar to .zip for clarity and direct upload
+          mv target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.jar target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
