@@ -1,0 +1,54 @@
+# .github/workflows/build-and-publish.yml
+name: Build and Publish Lambda Artifact
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Aciona o pipeline quando uma tag de versão (ex: v1.0.0) é criada
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write 
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Get version from Git tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml -DskipTests
+
+      - name: Rename artifact
+        run: mv target/cpf-auth-lambda-1.0.0.jar target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.jar
+
+      - name: Create ZIP file
+        run: |
+          cd target
+          zip cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.jar
+          cd ..
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/GitHubAction-Lambda-Artifact-Uploader # Role que o GitHub pode assumir
+          aws-region: ${{ vars.AWS_REGION }} # ex: us-east-1
+
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp \
+            target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip \
+            s3://${{ secrets.ARTIFACT_BUCKET }}/cpf-auth-lambda/${{ steps.get_version.outputs.VERSION }}/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip
+
