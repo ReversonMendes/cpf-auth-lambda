@@ -24,7 +24,7 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
     // Best Practice: Initialize heavyweight, thread-safe objects once.
     private static final CognitoIdentityProviderClient cognitoClient = CognitoIdentityProviderClient.create();
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String cognitoAttributeName = "cpf"; // The attribute name in Cognito
+    private static final String cognitoAttributeName = "username"; // The attribute name in Cognito
 
     // Configuration is loaded once per cold start
     private static final String USER_POOL_ID = System.getenv("COGNITO_USER_POOL_ID");
