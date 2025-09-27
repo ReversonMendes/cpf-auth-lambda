@@ -43,11 +43,17 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
                 throw new IllegalStateException("Environment variable 'JWT_SECRET_KEY' is not set.");
             }
 
-            AuthRequest authRequest = objectMapper.readValue(input.getBody(), AuthRequest.class);
+            String requestBody = input.getBody();
+            if (requestBody == null || requestBody.trim().isEmpty()) {
+                return ApiGatewayResponse.build(400, Map.of("error", "Request body is missing or empty"));
+            }
+
+            AuthRequest authRequest = objectMapper.readValue(requestBody, AuthRequest.class);
             String cpf = authRequest.getCpf();
 
-            if (cpf == null || cpf.trim().isEmpty()) {
-                return ApiGatewayResponse.build(400, Map.of("error", "cpf field is required"));
+            // More robust validation for CPF format
+            if (cpf == null || !cpf.matches("\\d{11}")) {
+                return ApiGatewayResponse.build(400, Map.of("error", "cpf field is required and must contain exactly 11 digits"));
             }
 
             // Query Cognito for users with the specified CPF attribute
