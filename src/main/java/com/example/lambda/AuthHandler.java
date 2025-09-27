@@ -3,32 +3,28 @@ package com.example.lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ListUsersResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.UserType;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthFlowType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthenticationResultType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.NotAuthorizedException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, ApiGatewayResponse> {
 
     // Best Practice: Initialize heavyweight, thread-safe objects once.
     private static final CognitoIdentityProviderClient cognitoClient = CognitoIdentityProviderClient.create();
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String cognitoAttributeName = "username"; // The attribute name in Cognito
 
     // Configuration is loaded once per cold start
     private static final String USER_POOL_ID = System.getenv("COGNITO_USER_POOL_ID");
-    private static final String JWT_SECRET = System.getenv("JWT_SECRET_KEY");
+    private static final String APP_CLIENT_ID = System.getenv("COGNITO_APP_CLIENT_ID");
 
     @Override
     public ApiGatewayResponse handleRequest(APIGatewayProxyRequestEvent input, Context context) {
@@ -39,8 +35,8 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
             if (USER_POOL_ID == null || USER_POOL_ID.trim().isEmpty()) {
                 throw new IllegalStateException("Environment variable 'COGNITO_USER_POOL_ID' is not set.");
             }
-            if (JWT_SECRET == null || JWT_SECRET.trim().isEmpty()) {
-                throw new IllegalStateException("Environment variable 'JWT_SECRET_KEY' is not set.");
+            if (APP_CLIENT_ID == null || APP_CLIENT_ID.trim().isEmpty()) {
+                throw new IllegalStateException("Environment variable 'COGNITO_APP_CLIENT_ID' is not set.");
             }
 
             String requestBody = input.getBody();
@@ -50,44 +46,43 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
             AuthRequest authRequest = objectMapper.readValue(requestBody, AuthRequest.class);
             String cpf = authRequest.getCpf();
+            String password = authRequest.getPassword();
 
-            // More robust validation for CPF format
-            if (cpf == null || !cpf.matches("\\d{11}")) {
-                return ApiGatewayResponse.build(400, Map.of("error", "cpf field is required and must contain exactly 11 digits"));
+            // More robust validation for input
+            if (cpf == null || cpf.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+                return ApiGatewayResponse.build(400, Map.of("error", "cpf and password fields are required"));
             }
 
-            // Query Cognito for users with the specified CPF attribute
-            // Note: The filter does not use the "custom:" prefix.
-            String filter = String.format("%s = \"%s\"", cognitoAttributeName, cpf);
-            ListUsersRequest req = ListUsersRequest.builder()
-                    .userPoolId(USER_POOL_ID)
-                    .filter(filter)
-                    .limit(1) // We only need to find one user
+            // Use USER_PASSWORD_AUTH flow to authenticate the user with Cognito
+            Map<String, String> authParameters = new HashMap<>();
+            authParameters.put("USERNAME", cpf);
+            authParameters.put("PASSWORD", password);
+
+            InitiateAuthRequest authRequestCognito = InitiateAuthRequest.builder()
+                    .authFlow(AuthFlowType.USER_PASSWORD_AUTH)
+                    .authParameters(authParameters)
+                    .clientId(APP_CLIENT_ID)
                     .build();
 
-            ListUsersResponse listResp = cognitoClient.listUsers(req);
-            List<UserType> users = listResp.users();
+            InitiateAuthResponse authResponse = cognitoClient.initiateAuth(authRequestCognito);
+            AuthenticationResultType authResult = authResponse.authenticationResult();
 
-            if (users == null || users.isEmpty()) {
-                return ApiGatewayResponse.build(404, Map.of("error", "user not found"));
+            if (authResult != null && authResult.idToken() != null) {
+                // Return the tokens provided by Cognito
+                Map<String, String> tokens = Map.of(
+                        "idToken", authResult.idToken(),
+                        "accessToken", authResult.accessToken(),
+                        "refreshToken", authResult.refreshToken()
+                );
+                return ApiGatewayResponse.build(200, tokens);
+            } else {
+                // Should not happen in a normal flow, but good to handle
+                return ApiGatewayResponse.build(500, Map.of("error", "Cognito did not return a valid token"));
             }
-
-            UserType user = users.get(0);
-
-            // Build JWT
-            Instant now = Instant.now();
-            byte[] secretKeyBytes = Base64.getDecoder().decode(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
-
-            String jwt = Jwts.builder()
-                    .setSubject(user.username())
-                    .setIssuedAt(Date.from(now))
-                    .setExpiration(Date.from(now.plusSeconds(3600))) // Expires in 1 hour
-                    .claim("cpf", cpf)
-                    .signWith(Keys.hmacShaKeyFor(secretKeyBytes))
-                    .compact();
-
-            return ApiGatewayResponse.build(200, Map.of("token", jwt));
-
+        } catch (JsonProcessingException e) {
+            return ApiGatewayResponse.build(400, Map.of("error", "Invalid request body format"));
+        } catch (NotAuthorizedException | UserNotFoundException e) {
+            return ApiGatewayResponse.build(401, Map.of("error", "Invalid credentials"));
         } catch (Exception e) {
             // Log the full exception for better debugging
             context.getLogger().log("Error processing request: " + e);
