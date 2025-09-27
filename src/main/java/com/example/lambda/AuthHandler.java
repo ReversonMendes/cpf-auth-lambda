@@ -73,7 +73,7 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
             InitiateAuthResponse authResponse = cognitoClient.initiateAuth(authRequestCognito);
             AuthenticationResultType authResult = authResponse.authenticationResult();
-
+            context.getLogger().log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: " + authResult);
             if (authResult != null && authResult.idToken() != null) {
                 // Return the tokens provided by Cognito
                 // Note: Cognito does NOT return a new refresh token on every refresh.
