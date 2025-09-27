@@ -1,15 +1,24 @@
 package com.example.lambda;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+// This class is a Data Transfer Object (DTO) for the login request.
 public class AuthRequest {
-    private final String cpf;
+    private String cpf;
+    private String password;
 
-    @JsonCreator
-    public AuthRequest(@JsonProperty("cpf") String cpf) {
+    // Getters and Setters
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
         this.cpf = cpf;
     }
 
-    public String getCpf() { return cpf; }
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }
