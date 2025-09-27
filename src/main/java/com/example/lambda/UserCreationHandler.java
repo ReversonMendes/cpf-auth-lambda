@@ -27,7 +27,7 @@ public class UserCreationHandler implements RequestHandler<APIGatewayProxyReques
     private static final String USER_POOL_ID = System.getenv("COGNITO_USER_POOL_ID");
     private static final String APP_CLIENT_ID = System.getenv("COGNITO_APP_CLIENT_ID");
 
-    private static final String FIXED_PASSWORD = "SuaSenhaFixaSuperSecretaAqui";
+    private static final String FIXED_PASSWORD = "@Jpq9897gh";
 
     @Override
     public ApiGatewayResponse handleRequest(APIGatewayProxyRequestEvent input, Context context) {
