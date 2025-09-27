@@ -29,10 +29,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build with Maven
-        run: mvn -B package --file pom.xml -DskipTests
-
-      - name: Rename artifact
-        run: mv target/cpf-auth-lambda-1.0.0.jar target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.jar
+        run: mvn -B package --file pom.xml -Drevision=${{ steps.get_version.outputs.VERSION }} -DskipTests
 
       - name: Create ZIP file
         run: |
@@ -51,4 +48,3 @@ jobs:
           aws s3 cp \
             target/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip \
             s3://${{ secrets.ARTIFACT_BUCKET }}/cpf-auth-lambda/${{ steps.get_version.outputs.VERSION }}/cpf-auth-lambda-${{ steps.get_version.outputs.VERSION }}.zip
-

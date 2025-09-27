@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
   <artifactId>cpf-auth-lambda</artifactId>
-  <version>1.0.0</version>
+  <version>${revision}</version>
   <packaging>jar</packaging>
 
   <properties>
@@ -13,6 +13,7 @@
     <aws.sdk.version>2.20.0</aws.sdk.version>
     <junit.version>5.9.2</junit.version>
     <jjwt.version>0.11.5</jjwt.version>
+    <revision>1.0.0-SNAPSHOT</revision> <!-- Versão padrão para builds locais -->
   </properties>
 
   <dependencies>
