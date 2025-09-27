@@ -46,20 +46,27 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
             AuthRequest authRequest = objectMapper.readValue(requestBody, AuthRequest.class);
             String cpf = authRequest.getCpf();
-            String password = authRequest.getPassword();
+            String password = authRequest.getPassword(); // Can be null
+            String refreshToken = authRequest.getRefreshToken(); // Can be null
 
-            // More robust validation for input
-            if (cpf == null || cpf.trim().isEmpty() || password == null || password.trim().isEmpty()) {
-                return ApiGatewayResponse.build(400, Map.of("error", "cpf and password fields are required"));
+            Map<String, String> authParameters = new HashMap<>();
+            AuthFlowType authFlow;
+
+            if (refreshToken != null && !refreshToken.trim().isEmpty()) {
+                // Scenario 2: Refresh session using a refresh token (no password needed)
+                authParameters.put("REFRESH_TOKEN", refreshToken);
+                authFlow = AuthFlowType.REFRESH_TOKEN_AUTH;
+            } else if (cpf != null && !cpf.trim().isEmpty() && password != null && !password.trim().isEmpty()) {
+                // Scenario 1: Initial login with cpf and password
+                authParameters.put("USERNAME", cpf);
+                authParameters.put("PASSWORD", password);
+                authFlow = AuthFlowType.USER_PASSWORD_AUTH;
+            } else {
+                return ApiGatewayResponse.build(400, Map.of("error", "Request must contain either a refreshToken or both cpf and password"));
             }
 
-            // Use USER_PASSWORD_AUTH flow to authenticate the user with Cognito
-            Map<String, String> authParameters = new HashMap<>();
-            authParameters.put("USERNAME", cpf);
-            authParameters.put("PASSWORD", password);
-
             InitiateAuthRequest authRequestCognito = InitiateAuthRequest.builder()
-                    .authFlow(AuthFlowType.USER_PASSWORD_AUTH)
+                    .authFlow(authFlow)
                     .authParameters(authParameters)
                     .clientId(APP_CLIENT_ID)
                     .build();
@@ -69,11 +76,14 @@ public class AuthHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
             if (authResult != null && authResult.idToken() != null) {
                 // Return the tokens provided by Cognito
-                Map<String, String> tokens = Map.of(
-                        "idToken", authResult.idToken(),
-                        "accessToken", authResult.accessToken(),
-                        "refreshToken", authResult.refreshToken()
-                );
+                // Note: Cognito does NOT return a new refresh token on every refresh.
+                // The original refresh token remains valid until it expires or is revoked.
+                Map<String, String> tokens = new HashMap<>();
+                tokens.put("idToken", authResult.idToken());
+                tokens.put("accessToken", authResult.accessToken());
+                if (authResult.refreshToken() != null) {
+                    tokens.put("refreshToken", authResult.refreshToken());
+                }
                 return ApiGatewayResponse.build(200, tokens);
             } else {
                 // Should not happen in a normal flow, but good to handle
