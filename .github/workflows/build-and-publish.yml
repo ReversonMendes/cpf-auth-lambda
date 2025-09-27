@@ -40,7 +40,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/LabRole # Role que o GitHub pode assumir
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/voclabs # Role que o GitHub pode assumir
           aws-region: ${{ vars.AWS_REGION }} # ex: us-east-1
 
       - name: Upload artifact to S3
