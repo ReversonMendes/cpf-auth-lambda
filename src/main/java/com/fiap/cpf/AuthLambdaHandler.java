@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fiap.cpf.api.LoginRequest;
 import com.fiap.cpf.api.LoginResponse;
 import com.fiap.cpf.service.CognitoService;
@@ -13,7 +14,10 @@ import java.util.Map;
 
 public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Object> {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    // No início da classe
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final CognitoService cognito = new CognitoService();
 
     @Override
