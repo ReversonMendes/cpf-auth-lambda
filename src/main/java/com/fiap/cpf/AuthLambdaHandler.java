@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Object> {
 
 
-    // No início da classe
+
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final CognitoService cognito = new CognitoService();
@@ -52,9 +52,13 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
     private Object handleApiGateway(APIGatewayProxyRequestEvent event, Context context) throws Exception {
         LoginRequest req = MAPPER.readValue(event.getBody(), LoginRequest.class);
+        context.getLogger().log("CPF recebido: " + req.getCpf());
+
 
         // chama Cognito para iniciar autenticação custom
         LoginResponse response = cognito.loginWithCpf(req.getCpf());
+
+        logger.log(Level.INFO, response.toString());
 
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
@@ -69,22 +73,28 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         logger.log(Level.INFO, "Trigger Cognito: " + triggerSource);
         switch (triggerSource) {
             case "DefineAuthChallenge_Authentication":
-                return handleDefineAuthChallenge(event);
+                logger.log(Level.INFO, "#1 DefineAuthChallenge_Authentication");                
+                handleDefineAuthChallenge(event);
+                break;
 
             case "CreateAuthChallenge_Authentication":
-                return handleCreateAuthChallenge(event);
+                logger.log(Level.INFO, "#2 CreateAuthChallenge_Authentication");
+                handleCreateAuthChallenge(event);
+                break;
 
             case "VerifyAuthChallengeResponse_Authentication":
-                return handleVerifyAuthChallenge(event);
+                logger.log(Level.INFO, "#3 VerifyAuthChallengeResponse_Authentication");
+                handleVerifyAuthChallenge(event);
+                break;
 
             default:
                 context.getLogger().log("Trigger inesperado: " + triggerSource);
-                return event;
         }
+        return event; // Retorna o evento completo e modificado
     }
 
     // DefineAuthChallenge -> diz se ainda precisa validar ou se já está autenticado
-    private Map<String, Object> handleDefineAuthChallenge(Map<String, Object> event) {
+    private void handleDefineAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
 
         logger.log(Level.INFO, response.toString());
@@ -95,7 +105,6 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
         if (cpfValidado) {
             logger.log(Level.INFO, "CPF já foi validado");
-            response.put("challengeName", null);
             response.put("issueTokens", true);
             response.put("failAuthentication", false);
         } else {
@@ -104,13 +113,11 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
             response.put("issueTokens", false);
             response.put("failAuthentication", false);
         }
-
-        return response;
     }
 
     // CreateAuthChallenge -> aqui você poderia gerar código, SMS etc.
     // Como é só CPF, apenas "marca" que o desafio foi criado
-    private Map<String, Object> handleCreateAuthChallenge(Map<String, Object> event) {
+    private void handleCreateAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
 
         Map<String, Object> challengeMetaData = new HashMap<>();
@@ -120,12 +127,10 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         response.put("privateChallengeParameters", challengeMetaData);
         response.put("challengeMetadata", "CPF_VALIDATION");
         logger.log(Level.INFO, "CPF ainda não foi validado");
-
-        return response;
     }
 
     // VerifyAuthChallengeResponse -> onde validamos o CPF no banco
-    private Map<String, Object> handleVerifyAuthChallenge(Map<String, Object> event) {
+    private void handleVerifyAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
 
         Map<String, Object> userAnswer = (Map<String, Object>) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
@@ -144,8 +149,6 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
             response.put("answerCorrect", false);
             logger.log(Level.WARNING, "CPF " + cpfInformado + " inválido.");
         }
-
-        return response;
     }
 
     // Função fake para simular consulta no banco
