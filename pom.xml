@@ -2,111 +2,62 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.example</groupId>
+  <groupId>com.fiap</groupId>
   <artifactId>cpf-auth-lambda</artifactId>
   <version>${revision}</version>
   <packaging>jar</packaging>
 
   <properties>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <revision>1.0.0-SNAPSHOT</revision> <!-- Versão padrão para builds locais -->
-
-    <!-- Dependency Versions -->
-    <aws.sdk.version>2.25.14</aws.sdk.version>
-    <aws.lambda.java.version>1.2.3</aws.lambda.java.version>
-    <aws.lambda.events.version>3.11.4</aws.lambda.events.version>
-    <junit.version>5.9.2</junit.version>
-    <jjwt.version>0.11.5</jjwt.version>
-    <jackson.version>2.17.0</jackson.version>
-    <slf4j.version>2.0.13</slf4j.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
 
   <dependencies>
-    <!-- AWS SDK v2 -->
-    <dependency>
-      <groupId>software.amazon.awssdk</groupId>
-      <artifactId>cognitoidentityprovider</artifactId>
-    </dependency>
-
-    <!-- AWS Lambda Java core -->
+    <!-- AWS Lambda -->
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-core</artifactId>
-      <version>${aws.lambda.java.version}</version>
+      <version>1.2.3</version>
     </dependency>
-
-    <!-- AWS Lambda Events (for APIGatewayProxyRequestEvent) -->
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-events</artifactId>
-      <version>${aws.lambda.events.version}</version>
+      <version>3.11.3</version>
     </dependency>
 
-    <!-- JJWT for JWT generation -->
+    <!-- AWS SDK v2 Cognito -->
     <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-api</artifactId>
-      <version>${jjwt.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-impl</artifactId>
-      <version>${jjwt.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-jackson</artifactId>
-      <version>${jjwt.version}</version>
-      <scope>runtime</scope>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>cognitoidentityprovider</artifactId>
+      <version>2.20.160</version>
     </dependency>
 
-    <!-- Logging -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-
-    <!-- Jackson for JSON parsing -->
+    <!-- JSON -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
+      <version>2.15.3</version>
     </dependency>
 
-    <!-- Test Dependencies -->
+    <!-- Log -->
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.20.0</version>
     </dependency>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.20.0</version>
     </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
-      <version>5.11.0</version>
-      <scope>test</scope>
-    </dependency>
-
   </dependencies>
 
   <build>
     <plugins>
-      <!-- Shade to create fat jar -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.3.0</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -115,23 +66,16 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>com.fiap.cpf.AuthLambdaHandler</mainClass>
+                </transformer>
+              </transformers>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>bom</artifactId>
-        <version>${aws.sdk.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
 </project>
