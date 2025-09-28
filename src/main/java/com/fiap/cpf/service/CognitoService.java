@@ -22,6 +22,7 @@ public class CognitoService {
         );
 
         AuthenticationResultType result = authResponse.authenticationResult();
+
         return new LoginResponse(
                 result.accessToken(),
                 result.idToken(),
