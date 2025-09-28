@@ -18,6 +18,8 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
     @Override
     public Object handleRequest(Map<String, Object> input, Context context) {
+        context.getLogger().log("Evento recebido: " + input);
+
         try {
             // Quando chamado pelo Cognito Trigger (Custom Auth Flow)
             if (input.get("triggerSource") != null) {
