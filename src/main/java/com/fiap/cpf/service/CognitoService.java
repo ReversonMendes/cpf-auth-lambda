@@ -8,8 +8,6 @@ import java.util.Map;
 
 public class CognitoService {
 
-    private final String userPoolId = System.getenv("USER_POOL_ID");
-    private final String clientId = System.getenv("USER_POOL_CLIENT");
     private final CognitoIdentityProviderClient cognito = CognitoIdentityProviderClient.create();
 
     public LoginResponse loginWithCpf(String cpf) {
@@ -17,8 +15,8 @@ public class CognitoService {
         AdminInitiateAuthResponse authResponse = cognito.adminInitiateAuth(
                 AdminInitiateAuthRequest.builder()
                         .authFlow(AuthFlowType.CUSTOM_AUTH)
-                        .clientId(clientId)
-                        .userPoolId(userPoolId)
+                        .clientId(ConfigService.getClientId())
+                        .userPoolId(ConfigService.getUserPoolId())
                         .authParameters(Map.of("USERNAME", cpf))
                         .build()
         );
