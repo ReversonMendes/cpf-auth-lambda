@@ -90,7 +90,7 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
             default:
                 context.getLogger().log("Trigger inesperado: " + triggerSource);
         }
-        return event; // Retorna o evento completo e modificado
+        return event;
     }
 
     // DefineAuthChallenge -> diz se ainda precisa validar ou se já está autenticado
@@ -103,20 +103,19 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         Boolean cpfValidado = (Boolean) ((Map<String, Object>) event.get("request"))
                 .getOrDefault("cpfValido", false);
 
-       // if (cpfValidado) {
+        if (cpfValidado) {
             logger.log(Level.INFO, "CPF já foi validado");
             response.put("issueTokens", true);
             response.put("failAuthentication", false);
-//        } else {
-//            logger.log(Level.INFO, "CPF ainda não foi validado");
-//            response.put("challengeName", "CUSTOM_CHALLENGE");
-//            response.put("issueTokens", false);
-//            response.put("failAuthentication", false);
-//        }
+        } else {
+            logger.log(Level.INFO, "CPF ainda não foi validado");
+            response.put("challengeName", "CUSTOM_CHALLENGE");
+            response.put("issueTokens", false);
+            response.put("failAuthentication", false);
+        }
     }
 
-    // CreateAuthChallenge -> aqui você poderia gerar código, SMS etc.
-    // Como é só CPF, apenas "marca" que o desafio foi criado
+    // CreateAuthChallenge -> Como é só CPF, apenas "marca" que o desafio foi criado
     private void handleCreateAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
 
