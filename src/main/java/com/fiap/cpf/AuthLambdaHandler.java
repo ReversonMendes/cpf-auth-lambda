@@ -27,7 +27,7 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
             }
 
             // Quando chamado pelo API Gateway Proxy
-            if (input.get("httpMethod") != null) {
+            if (input.get("requestContext") != null && ((Map<String, Object>) input.get("requestContext")).get("http") != null) {
                 APIGatewayProxyRequestEvent event = MAPPER.convertValue(input, APIGatewayProxyRequestEvent.class);
                 return handleApiGateway(event, context);
             }
