@@ -18,7 +18,7 @@ public class UserService {
                     .userPoolId(userPoolId)
                     .username(cpf)
                     .build());
-            return true;
+            return false;
         } catch (UserNotFoundException e) {
             // Usuário não existe → cria
             cognito.adminCreateUser(AdminCreateUserRequest.builder()
@@ -48,14 +48,6 @@ public class UserService {
                     .userPoolId(userPoolId)
                     .username(cpf)
                     .build());
-
-            cognito.adminGetUser(AdminGetUserRequest.builder()
-                    .userPoolId(userPoolId)
-                    .username(cpf)
-                    .build());
-
-
-
             return true;
         }
     }
