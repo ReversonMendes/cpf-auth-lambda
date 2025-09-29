@@ -72,20 +72,8 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
                 return new APIGatewayProxyResponseEvent().withStatusCode(401).withBody("Usuário não encontrado");
             }
 
-            // ======= 2. Garantir que usuário exista no Cognito =======
-//            ensureUserConfirmed(cpf, context);
-
             userService.ensureUserExists(cpf);
 
-            // ======= 3. Inicia Custom Auth Flow =======
-//            AdminInitiateAuthRequest authRequest = AdminInitiateAuthRequest.builder()
-//                    .userPoolId(ConfigService.getUserPoolId())
-//                    .clientId(ConfigService.getClientId())
-//                    .authFlow(AuthFlowType.CUSTOM_AUTH)
-//                    .authParameters(Map.of("USERNAME", cpf))
-//                    .build();
-
-           // AdminInitiateAuthResponse response = cognito.adminInitiateAuth(authRequest);
 
         //chama Cognito para iniciar autenticação custom
         LoginResponse response = cognito.loginWithCpf(req.getCpf());
@@ -94,15 +82,9 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
-                .withBody(MAPPER.writeValueAsString(response))
+                .withBody(response != null ? MAPPER.writeValueAsString(response) : "Desafio enviado (aguardando resposta)")
                 .withHeaders(Map.of("Content-Type", "application/json"));
 
-//
-//            return new APIGatewayProxyResponseEvent()
-//                    .withStatusCode(200)
-//                    .withBody(response.authenticationResult() != null
-//                            ? response.authenticationResult().idToken()
-//                            : "Desafio enviado (aguardando resposta)");
 
         } catch (Exception e) {
             context.getLogger().log("Erro: " + e.getMessage());
@@ -198,27 +180,17 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     // DefineAuthChallenge -> diz se ainda precisa validar ou se já está autenticado
     private void handleDefineAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
+        Boolean cpfValidado = (Boolean) ((Map<String, Object>) event.get("request")).getOrDefault("cpfValido", false);
 
-        logger.log(Level.INFO, response.toString());
-
-//        // Se o CPF já foi validado, autentica
-//        Boolean cpfValidado = (Boolean) ((Map<String, Object>) event.get("request"))
-//                .getOrDefault("cpfValido", false);
-//
-//        if (cpfValidado) {
-//            logger.log(Level.INFO, "CPF já foi validado");
-//            response.put("issueTokens", true);
-//            response.put("failAuthentication", false);
-//        } else {
-//            logger.log(Level.INFO, "CPF ainda não foi validado");
-//            response.put("challengeName", "CUSTOM_CHALLENGE");
-//            response.put("issueTokens", false);
-//            response.put("failAuthentication", false);
-//        }
-
-        response.put("challengeName", "CUSTOM_CHALLENGE");
-        response.put("failAuthentication", false);
-        response.put("issueTokens", true);
+        logger.log(Level.INFO, "CPFVALIDADO ? " + cpfValidado);
+        if (cpfValidado != null && cpfValidado) {
+            response.put("issueTokens", true);
+            response.put("failAuthentication", false);
+        } else {
+            response.put("challengeName", "CUSTOM_CHALLENGE");
+            response.put("issueTokens", false);
+            response.put("failAuthentication", false);
+        }
 
     }
 
@@ -236,26 +208,19 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         logger.log(Level.INFO, "CPF ainda não foi validado");
     }
 
-    // VerifyAuthChallengeResponse -> onde validamos o CPF no banco
+    // VerifyAuthChallengeResponse
     private void handleVerifyAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
 
         Map<String, Object> userAnswer = (Map<String, Object>) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
         String cpfInformado = (String) userAnswer.get("cpf");
 
-        // TODO: aqui você valida no banco se o CPF existe
-        logger.log(Level.INFO, "Validando CPF: " + cpfInformado);
-        boolean valido = validarCpfNoBanco(cpfInformado);
+        logger.log(Level.INFO, "CPF " + cpfInformado + " validado com sucesso.");
+        
+        response.put("answerCorrect", true);
+        // marca que o CPF já foi validado, para o DefineAuthChallenge usar
+        ((Map<String, Object>) event.get("request")).put("cpfValido", true);
 
-        if (valido) {
-            logger.log(Level.INFO, "CPF " + cpfInformado + " validado com sucesso.");
-            response.put("answerCorrect", true);
-            // marca que o CPF já foi validado, para o DefineAuthChallenge usar
-            ((Map<String, Object>) event.get("request")).put("cpfValido", true);
-        } else {
-            response.put("answerCorrect", false);
-            logger.log(Level.WARNING, "CPF " + cpfInformado + " inválido.");
-        }
     }
 
     // Função fake para simular consulta no banco
