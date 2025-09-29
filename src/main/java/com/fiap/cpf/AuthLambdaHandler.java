@@ -122,43 +122,45 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
     // DefineAuthChallenge -> diz se ainda precisa validar ou se já está autenticado
     private void handleDefineAuthChallenge(Map<String, Object> event) {
+//        Map<String, Object> response = getResponseMap(event);
+//
+//        logger.log(Level.INFO, response.toString());
+//
+//        response.put("challengeName", "CUSTOM_CHALLENGE");
+//        response.put("failAuthentication", false);
+//        response.put("issueTokens", true);
+//        logger.log(Level.INFO, "Login autorizado automaticamente.");
+
         Map<String, Object> response = getResponseMap(event);
 
-        logger.log(Level.INFO, response.toString());
-
-        response.put("challengeName", "CUSTOM_CHALLENGE");
-        response.put("failAuthentication", false);
         response.put("issueTokens", true);
+        response.put("failAuthentication", false);
 
+        logger.log(Level.INFO, "Fluxo custom: login autorizado automaticamente.");
     }
 
     // CreateAuthChallenge -> Como é só CPF, apenas "marca" que o desafio foi criado
     private void handleCreateAuthChallenge(Map<String, Object> event) {
-        Map<String, Object> response = getResponseMap(event);
-
-        Map<String, Object> challengeMetaData = new HashMap<>();
-        challengeMetaData.put("info", "Validação de CPF requerida");
-
-        response.put("publicChallengeParameters", challengeMetaData);
-        response.put("privateChallengeParameters", challengeMetaData);
-        response.put("challengeMetadata", "CPF_VALIDATION");
-
-        logger.log(Level.INFO, "CPF ainda não foi validado");
+        logger.log(Level.INFO, "CreateAuthChallenge ignorado (fluxo sempre verdadeiro).");
     }
 
     // VerifyAuthChallengeResponse
     private void handleVerifyAuthChallenge(Map<String, Object> event) {
+//        Map<String, Object> response = getResponseMap(event);
+//
+//        Map<String, Object> userAnswer = (Map<String, Object>) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
+//        String cpfInformado = (String) userAnswer.get("cpf");
+//
+//        logger.log(Level.INFO, "Validando CPF: " + cpfInformado);
+//
+//        logger.log(Level.INFO, "CPF " + cpfInformado + " validado com sucesso.");
+//        response.put("answerCorrect", true);
+//        // marca que o CPF já foi validado, para o DefineAuthChallenge usar
+//        ((Map<String, Object>) event.get("request")).put("cpfValido", true);
+
         Map<String, Object> response = getResponseMap(event);
-
-        Map<String, Object> userAnswer = (Map<String, Object>) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
-        String cpfInformado = (String) userAnswer.get("cpf");
-
-        logger.log(Level.INFO, "Validando CPF: " + cpfInformado);
-
-        logger.log(Level.INFO, "CPF " + cpfInformado + " validado com sucesso.");
-        response.put("answerCorrect", true);
-        // marca que o CPF já foi validado, para o DefineAuthChallenge usar
-        ((Map<String, Object>) event.get("request")).put("cpfValido", true);
+        response.put("answerCorrect", true); // sempre verdadeiro
+        logger.log(Level.INFO, "VerifyAuthChallenge sempre verdadeiro.");
 
     }
 

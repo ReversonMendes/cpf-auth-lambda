@@ -54,6 +54,8 @@ public class UserService {
                     .username(cpf)
                     .build());
 
+
+
             return true;
         }
     }
