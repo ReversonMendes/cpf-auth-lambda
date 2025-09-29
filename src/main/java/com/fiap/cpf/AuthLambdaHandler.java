@@ -74,7 +74,7 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
             // ======= 2. Garantir que usuário exista no Cognito =======
             boolean isUserCriado  = userService.ensureUserExists(cpf);
-            if (!isUserCriado) {
+            if (isUserCriado) {
                 return new APIGatewayProxyResponseEvent().withStatusCode(201).withBody("Usuário criado. Por favor, tente o login novamente.");
             }
 
