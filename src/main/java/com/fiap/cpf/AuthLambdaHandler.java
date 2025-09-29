@@ -11,9 +11,13 @@ import com.fiap.cpf.service.CognitoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.cpf.service.ConfigService;
 import com.fiap.cpf.service.UserService;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
+import software.amazon.awssdk.services.ssm.SsmClient;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,7 +26,13 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private final CognitoService cognito = new CognitoService();
+    private final CognitoService cognitoService = new CognitoService();
+    private final CognitoIdentityProviderClient cognito;
+
+    public AuthLambdaHandler() {
+        cognito = CognitoIdentityProviderClient.create();
+    }
+
     private final UserService userService = new UserService(ConfigService.getUserPoolId());
 
     private final Logger logger = Logger.getLogger(AuthLambdaHandler.class.getName());
@@ -72,18 +82,19 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
                 return new APIGatewayProxyResponseEvent().withStatusCode(401).withBody("Usuário não encontrado");
             }
 
+
             userService.ensureUserExists(cpf);
 
+            //chama Cognito para iniciar autenticação custom
+            LoginResponse response = cognitoService.loginWithCpf(req.getCpf());
 
-        //chama Cognito para iniciar autenticação custom
-        LoginResponse response = cognito.loginWithCpf(req.getCpf());
-
-        logger.log(Level.INFO, response.toString());
-
+            logger.log(Level.INFO, response.toString());
+          
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
                 .withBody(response != null ? MAPPER.writeValueAsString(response) : "Desafio enviado (aguardando resposta)")
                 .withHeaders(Map.of("Content-Type", "application/json"));
+
 
 
         } catch (Exception e) {
@@ -93,45 +104,44 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     }
 
 
-//    private void ensureUserConfirmed(String cpf, Context context) {
-//        try {
-//            cognito.adminGetUser(AdminGetUserRequest.builder()
-//                    .userPoolId(USER_POOL_ID)
-//                    .username(cpf)
-//                    .build());
-//            // Usuário existe → ok
-//        } catch (UserNotFoundException e) {
-//            context.getLogger().log("Usuário não encontrado no User Pool. Criando...");
-//
-//            // Cria usuário
-//            cognito.adminCreateUser(AdminCreateUserRequest.builder()
-//                    .userPoolId(USER_POOL_ID)
-//                    .username(cpf)
-//                    .userAttributes(
-//                            AttributeType.builder().name("custom:cpf").value(cpf).build(),
-//                            AttributeType.builder().name("email_verified").value("true").build()
-//                    )
-//                    .messageAction("SUPPRESS")
-//                    .build());
-//
-//            // Define senha permanente
-//            String randomPassword = UUID.randomUUID().toString() + "Ab1!";
-//            cognito.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
-//                    .userPoolId(USER_POOL_ID)
-//                    .username(cpf)
-//                    .password(randomPassword)
-//                    .permanent(true)
-//                    .build());
-//
-//            // Confirma usuário
-//            cognito.adminConfirmSignUp(AdminConfirmSignUpRequest.builder()
-//                    .userPoolId(USER_POOL_ID)
-//                    .username(cpf)
-//                    .build());
-//        }
-//    }
+    private void ensureUserConfirmed(String cpf, Context context) {
+        try {
+            cognito.adminGetUser(AdminGetUserRequest.builder()
+                    .userPoolId(ConfigService.getUserPoolId())
+                    .username(cpf)
+                    .build());
+            // Usuário já existe e está confirmado
+        } catch (UserNotFoundException e) {
+            context.getLogger().log("Usuário não encontrado no User Pool. Criando...");
 
+            // Cria usuário com email e email_verified
+            cognito.adminCreateUser(AdminCreateUserRequest.builder()
+                    .userPoolId(ConfigService.getUserPoolId())
+                    .username(cpf)
+                    .userAttributes(
+                            AttributeType.builder().name("custom:cpf").value(cpf).build(),
+                            AttributeType.builder().name("email").value(cpf + "@exemplo.com").build(),
+                            AttributeType.builder().name("email_verified").value("true").build()
+                    )
+                    .messageAction("SUPPRESS")
+                    .build());
 
+            // Define senha permanente
+            String randomPassword = UUID.randomUUID().toString() + "Ab1!";
+            cognito.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
+                    .userPoolId(ConfigService.getUserPoolId())
+                    .username(cpf)
+                    .password(randomPassword)
+                    .permanent(true)
+                    .build());
+
+            // Confirma usuário
+            cognito.adminConfirmSignUp(AdminConfirmSignUpRequest.builder()
+                    .userPoolId(ConfigService.getUserPoolId())
+                    .username(cpf)
+                    .build());
+        }
+    }
 
 
 //    private Object handleApiGateway(APIGatewayProxyRequestEvent event, Context context) throws Exception {
@@ -157,7 +167,7 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         logger.log(Level.INFO, "Trigger Cognito: " + triggerSource);
         switch (triggerSource) {
             case "DefineAuthChallenge_Authentication":
-                logger.log(Level.INFO, "#1 DefineAuthChallenge_Authentication");                
+                logger.log(Level.INFO, "#1 DefineAuthChallenge_Authentication");
                 handleDefineAuthChallenge(event);
                 break;
 
@@ -181,6 +191,7 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     private void handleDefineAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
         Boolean cpfValidado = (Boolean) ((Map<String, Object>) event.get("request")).getOrDefault("cpfValido", false);
+
 
         logger.log(Level.INFO, "CPFVALIDADO ? " + cpfValidado);
         if (cpfValidado != null && cpfValidado) {
