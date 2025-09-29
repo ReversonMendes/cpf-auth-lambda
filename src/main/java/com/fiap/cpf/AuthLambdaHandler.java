@@ -216,9 +216,9 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 //            response.put("failAuthentication", false);
 //        }
 
-        event.put("challengeName", "CUSTOM_CHALLENGE");
-        event.put("failAuthentication", false);
-        event.put("issueTokens", true);
+        response.put("challengeName", "CUSTOM_CHALLENGE");
+        response.put("failAuthentication", false);
+        response.put("issueTokens", true);
 
     }
 
