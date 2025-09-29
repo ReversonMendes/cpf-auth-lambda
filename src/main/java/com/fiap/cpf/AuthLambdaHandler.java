@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 import software.amazon.awssdk.services.ssm.SsmClient;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -190,25 +191,30 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     // DefineAuthChallenge -> diz se ainda precisa validar ou se já está autenticado
     private void handleDefineAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
-        Boolean cpfValidado = (Boolean) ((Map<String, Object>) event.get("request")).getOrDefault("cpfValido", false);
+        logger.log(Level.INFO, "Resposta recebida handleDefineAuthChallenge: " + event);
 
+        List<Map<String, Object>> session = (List<Map<String, Object>>)
+                ((Map<String, Object>) event.get("request")).get("session");
 
-        logger.log(Level.INFO, "CPFVALIDADO ? " + cpfValidado);
-        if (cpfValidado != null && cpfValidado) {
+        boolean previousChallengeCorrect = session != null && !session.isEmpty()
+                && Boolean.TRUE.equals(session.get(session.size() - 1).get("challengeResult"));
+
+        if (previousChallengeCorrect) {
+            logger.log(Level.INFO, "CPF validado com sucesso, emitindo tokens.");
             response.put("issueTokens", true);
             response.put("failAuthentication", false);
         } else {
+            logger.log(Level.INFO, "Ainda precisa validar CPF.");
             response.put("challengeName", "CUSTOM_CHALLENGE");
             response.put("issueTokens", false);
             response.put("failAuthentication", false);
         }
-
     }
 
     // CreateAuthChallenge -> Como é só CPF, apenas "marca" que o desafio foi criado
     private void handleCreateAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
-
+        logger.log(Level.INFO, "Resposta recebida handleCreateAuthChallenge: " + event);
         Map<String, Object> challengeMetaData = new HashMap<>();
         challengeMetaData.put("info", "Validação de CPF requerida");
 
@@ -222,16 +228,14 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
     // VerifyAuthChallengeResponse
     private void handleVerifyAuthChallenge(Map<String, Object> event) {
         Map<String, Object> response = getResponseMap(event);
+        logger.log(Level.INFO, "Resposta recebida do VerifyAuthChallengeResponse: " + event);
+        String challengeAnswer = (String) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
+        logger.log(Level.INFO, "Resposta recebida do usuário: " + challengeAnswer);
 
-        Map<String, Object> userAnswer = (Map<String, Object>) ((Map<String, Object>) event.get("request")).get("challengeAnswer");
-        String cpfInformado = (String) userAnswer.get("cpf");
+        // Valida o CPF (aqui poderia consultar o banco)
+        boolean valido = challengeAnswer != null && !challengeAnswer.isEmpty();
 
-        logger.log(Level.INFO, "CPF " + cpfInformado + " validado com sucesso.");
-        
-        response.put("answerCorrect", true);
-        // marca que o CPF já foi validado, para o DefineAuthChallenge usar
-        ((Map<String, Object>) event.get("request")).put("cpfValido", true);
-
+        response.put("answerCorrect", valido);
     }
 
     // Função fake para simular consulta no banco
