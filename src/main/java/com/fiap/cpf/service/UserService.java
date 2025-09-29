@@ -3,11 +3,11 @@ package com.fiap.cpf.service;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 
-public class CpfAuthService {
+public class UserService {
     private final CognitoIdentityProviderClient cognito;
     private final String userPoolId;
 
-    public CpfAuthService(String userPoolId) {
+    public UserService(String userPoolId) {
         this.cognito = CognitoIdentityProviderClient.create();
         this.userPoolId = userPoolId;
     }
