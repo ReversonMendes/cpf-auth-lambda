@@ -25,6 +25,7 @@ public class UserService {
                     .username(cpf)
                     .userAttributes(
                             AttributeType.builder().name("custom:cpf").value(cpf).build(),
+                            AttributeType.builder().name("email").value("seu@email.com").build(),
                             AttributeType.builder().name("email_verified").value("true").build()
                     )
                     .messageAction("SUPPRESS")
