@@ -39,18 +39,23 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
             }
 
             // Quando chamado pelo API Gateway Proxy
-            if (input.get("requestContext") != null && ((Map<String, Object>) input.get("requestContext")).get("http") != null) {
-                APIGatewayProxyRequestEvent request = MAPPER.convertValue(input, APIGatewayProxyRequestEvent.class);
+            if (input.get("requestContext") != null) {
+                Map<String, Object> requestContext = (Map<String, Object>) input.get("requestContext");
+                Map<String, Object> http = (Map<String, Object>) requestContext.get("http");
 
-                String path = request.getPath();
-                String method = request.getHttpMethod();
+                if (http != null) {
+                    String method = (String) http.get("method");
+                    String path   = (String) http.get("path");
 
-                if ("/login".equals(path) && "POST".equalsIgnoreCase(method)) {
-                    return createUser(request, context);
-                } else if ("/login".equals(path) && "GET".equalsIgnoreCase(method)) {
-                    return authenticateUser(request, context);
-                } else {
-                    return resposta(404, "Rota não encontrada");
+                    context.getLogger().log("Método: " + method + " | Path: " + path);
+
+                    if (path.endsWith("/login") && "POST".equalsIgnoreCase(method)) {
+                        return createUser(input, context);
+                    } else if (path.endsWith("/login") && "GET".equalsIgnoreCase(method)) {
+                        return authenticateUser(input, context);
+                    } else {
+                        return resposta(404, "Rota não encontrada: " + method + " " + path);
+                    }
                 }
             }
 
@@ -63,22 +68,26 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
         }
     }
 
-    private APIGatewayProxyResponseEvent createUser(APIGatewayProxyRequestEvent input, Context context) throws JsonProcessingException {
-        LoginRequest req = MAPPER.readValue(input.getBody(), LoginRequest.class);
+    private Object  createUser(Map<String, Object> input, Context context) throws JsonProcessingException {
+
+        String body = (String) input.get("body");
+        LoginRequest req = MAPPER.readValue(body, LoginRequest.class);
+
         context.getLogger().log("CPF recebido: " + req.getCpf());
 
         userService.ensureUserExists(req.getCpf());
         return resposta(201, "Usuário criado com sucesso");
     }
 
-    private APIGatewayProxyResponseEvent authenticateUser(APIGatewayProxyRequestEvent request, Context context) throws JsonProcessingException {
-        LoginRequest req = MAPPER.readValue(request.getBody(), LoginRequest.class);
+    private Object  authenticateUser(Map<String, Object> input, Context context) throws JsonProcessingException {
+        String body = (String) input.get("body");
+
+        LoginRequest req = MAPPER.readValue(body, LoginRequest.class);
         context.getLogger().log("CPF recebido: " + req.getCpf());
 
         if (req.getCpf() == null) {
             return new APIGatewayProxyResponseEvent().withStatusCode(400).withBody("CPF obrigatório");
         }
-        String cpf = request.getQueryStringParameters().get("cpf");
 
         //chama Cognito para iniciar autenticação custom
         LoginResponse response = cognito.loginWithCpf(req.getCpf());
