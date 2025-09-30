@@ -2,7 +2,6 @@ package com.fiap.cpf;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -98,74 +97,6 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
         return resposta(200, MAPPER.writeValueAsString(response));
     }
-
-//    @Override
-//    public Object handleRequest(Map<String, Object> input, Context context) {
-//        context.getLogger().log("Evento recebido: " + input);
-//
-//        try {
-//            // Quando chamado pelo Cognito Trigger (Custom Auth Flow)
-//            if (input.get("triggerSource") != null) {
-//                return handleCognitoTrigger(input, context);
-//            }
-//
-//            // Quando chamado pelo API Gateway Proxy
-//            if (input.get("requestContext") != null && ((Map<String, Object>) input.get("requestContext")).get("http") != null) {
-//                APIGatewayProxyRequestEvent event = MAPPER.convertValue(input, APIGatewayProxyRequestEvent.class);
-//                return handleApiGatewayLogin(event, context);
-//            }
-//
-//            // Caso não seja reconhecido
-//            return Map.of("statusCode", 400, "body", "Evento não suportado");
-//
-//        } catch (Exception e) {
-//            context.getLogger().log("Erro: " + e.getMessage());
-//            return Map.of("statusCode", 500, "body", "Erro interno");
-//        }
-//    }
-
-
-//    private APIGatewayProxyResponseEvent handleApiGatewayLogin(APIGatewayProxyRequestEvent input, Context context) {
-//        try {
-//
-//            LoginRequest req = MAPPER.readValue(input.getBody(), LoginRequest.class);
-//            context.getLogger().log("CPF recebido: " + req.getCpf());
-//
-//            if (req.getCpf() == null) {
-//                return new APIGatewayProxyResponseEvent().withStatusCode(400).withBody("CPF obrigatório");
-//            }
-//
-//            String cpf = req.getCpf();
-//
-//            // ======= 1. Valida no banco interno =======
-//            boolean cpfValidoNoBanco = validarCpfNoBanco(cpf);
-//            if (!cpfValidoNoBanco) {
-//                return new APIGatewayProxyResponseEvent().withStatusCode(401).withBody("Usuário não encontrado");
-//            }
-//
-//            // ======= 2. Garantir que usuário exista no Cognito =======
-//            boolean isUserCriado = userService.ensureUserExists(cpf);
-//            if (!isUserCriado) {
-//                return new APIGatewayProxyResponseEvent().withStatusCode(201).withBody("Usuário criado. Por favor, tente o login novamente.");
-//            }
-//
-//
-//            //chama Cognito para iniciar autenticação custom
-//            LoginResponse response = cognito.loginWithCpf(req.getCpf());
-//
-//            logger.log(Level.INFO, response.toString());
-//
-//            return new APIGatewayProxyResponseEvent()
-//                    .withStatusCode(200)
-//                    .withBody(response != null
-//                            ? MAPPER.writeValueAsString(response)
-//                            : "Desafio enviado (aguardando resposta)");
-//
-//        } catch (Exception e) {
-//            context.getLogger().log("Erro: " + e.getMessage());
-//            return new APIGatewayProxyResponseEvent().withStatusCode(500).withBody("Erro interno");
-//        }
-//    }
 
     private Object handleCognitoTrigger(Map<String, Object> event, Context context) {
         String triggerSource = (String) event.get("triggerSource");
