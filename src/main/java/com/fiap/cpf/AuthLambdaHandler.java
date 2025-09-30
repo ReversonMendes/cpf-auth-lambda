@@ -70,27 +70,29 @@ public class AuthLambdaHandler implements RequestHandler<Map<String, Object>, Ob
 
     private Object  createUser(Map<String, Object> input, Context context) throws JsonProcessingException {
 
-        String body = (String) input.get("body");
-        LoginRequest req = MAPPER.readValue(body, LoginRequest.class);
+        LoginRequest req = MAPPER.readValue((String) input.get("body"), LoginRequest.class);
+        String cpf = req.getCpf();
+        context.getLogger().log("CPF recebido para criação: " + cpf);
 
-        context.getLogger().log("CPF recebido: " + req.getCpf());
-
-        userService.ensureUserExists(req.getCpf());
-        return resposta(201, "Usuário criado com sucesso");
+        boolean foiCriado = userService.ensureUserExists(cpf);
+        if (foiCriado) {
+            return resposta(201, "Usuário criado. Por favor, tente o login novamente.");
+        } else {
+            return resposta(200, "Usuário já existe.");
+        }
     }
 
     private Object  authenticateUser(Map<String, Object> input, Context context) throws JsonProcessingException {
-        String body = (String) input.get("body");
+        Map<String, String> queryParams = (Map<String, String>) input.get("queryStringParameters");
+        String cpf = (queryParams != null) ? queryParams.get("cpf") : null;
+        context.getLogger().log("CPF recebido para autenticação: " + cpf);
 
-        LoginRequest req = MAPPER.readValue(body, LoginRequest.class);
-        context.getLogger().log("CPF recebido: " + req.getCpf());
-
-        if (req.getCpf() == null) {
+        if (cpf == null || cpf.isBlank()) {
             return new APIGatewayProxyResponseEvent().withStatusCode(400).withBody("CPF obrigatório");
         }
 
         //chama Cognito para iniciar autenticação custom
-        LoginResponse response = cognito.loginWithCpf(req.getCpf());
+        LoginResponse response = cognito.loginWithCpf(cpf);
 
         logger.log(Level.INFO, response.toString());
 

@@ -12,12 +12,13 @@ public class UserService {
         this.userPoolId = userPoolId;
     }
 
-    public void ensureUserExists(String cpf) {
+    public boolean ensureUserExists(String cpf) {
         try {
             cognito.adminGetUser(AdminGetUserRequest.builder()
                     .userPoolId(userPoolId)
                     .username(cpf)
                     .build());
+            return false;
         } catch (UserNotFoundException e) {
             // Usuário não existe → cria
             cognito.adminCreateUser(AdminCreateUserRequest.builder()
@@ -41,12 +42,7 @@ public class UserService {
                     .password(randomPassword)
                     .permanent(true) // senha definitiva, sem obrigar alteração
                     .build());
-
-            // Confirma o usuário (opcional, geralmente já confirmado com permanent password)
-            cognito.adminConfirmSignUp(AdminConfirmSignUpRequest.builder()
-                    .userPoolId(userPoolId)
-                    .username(cpf)
-                    .build());
+            return  true;
         }
     }
 }
